@@ -1,0 +1,48 @@
+### 상품 목록
+GET http://localhost:8080/api/products
+
+### 주문 생성 (회원 4번)
+POST http://localhost:8080/api/orders
+Content-Type: application/json
+X-MEMBER-ID: 4
+
+{
+  "items": [
+    { "productId": 1, "quantity": 1 },
+    { "productId": 3, "quantity": 2 }
+  ],
+  "usePoint": 0,
+  "receiverName": "최수아",
+  "receiverPhone": "010-4444-5555",
+  "address": "서울시 강남구 테헤란로 123",
+  "memo": "문 앞에 놓아주세요"
+}
+
+### 결제
+POST http://localhost:8080/api/payments
+Content-Type: application/json
+
+{
+  "orderId": 304,
+  "method": "CARD",
+  "cardNo": "1234-5678-9012-3456"
+}
+
+### 내 주문 목록
+GET http://localhost:8080/api/orders
+X-MEMBER-ID: 4
+
+### 주문 취소
+POST http://localhost:8080/api/orders/304/cancel
+Content-Type: application/json
+X-MEMBER-ID: 4
+
+{
+  "reason": "단순 변심"
+}
+
+### 관리자 - 주문 검색
+GET http://localhost:8080/admin/orders/search?status=PAID
+
+### 관리자 - 월별 매출
+GET http://localhost:8080/admin/stats/monthly?year=2026&month=11

@@ -1,0 +1,25 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: shop-order-api
+  datasource:
+    url: jdbc:h2:mem:shop;MODE=MySQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: create
+    show-sql: true
+
+pg:
+  api-url: https://api.fake-pg.example.com/v1
+  timeout: 3000
+
+logging:
+  level:
+    com.example.shop: DEBUG

@@ -1,0 +1,14 @@
+package com.example.shop.dto;
+
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class ProductRequest {
+
+    private String name;
+    private String category;
+    private int price;
+    private int stock;
+}
