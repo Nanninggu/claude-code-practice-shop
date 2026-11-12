@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ShopNow - 상품</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header></header>
+<main>
+    <div class="layout">
+        <section>
+            <div class="row between">
+                <h2>상품 목록</h2>
+                <select id="category">
+                    <option value="">전체</option>
+                    <option>전자기기</option>
+                    <option>생활</option>
+                    <option>식품</option>
+                    <option>문구</option>
+                    <option>스포츠</option>
+                </select>
+            </div>
+            <div class="grid" id="products"></div>
+        </section>
+
+        <aside>
+            <div class="panel">
+                <h2>장바구니</h2>
+                <div id="cart"><div class="empty">담은 상품이 없습니다.</div></div>
+
+                <label>사용 포인트 (1,000P 이상)</label>
+                <input type="number" id="usePoint" value="0" min="0" step="100" class="full">
+
+                <table class="price-table">
+                    <tr><td>상품 금액</td><td id="pTotal">0원</td></tr>
+                    <tr><td>등급 할인</td><td id="pDiscount">0원</td></tr>
+                    <tr><td>배송비</td><td id="pShipping">0원</td></tr>
+                    <tr><td>포인트 사용</td><td id="pPoint">0원</td></tr>
+                    <tr class="total"><td>결제 예정 금액</td><td id="pPay">0원</td></tr>
+                </table>
+
+                <label>받는 분</label>
+                <input id="receiverName" class="full">
+                <label>연락처</label>
+                <input id="receiverPhone" class="full" placeholder="010-0000-0000">
+                <label>주소</label>
+                <input id="address" class="full" value="서울시 강남구 테헤란로 123">
+                <label>배송 메모</label>
+                <input id="memo" class="full" placeholder="선택">
+
+                <button class="big" id="orderBtn" disabled>주문하기</button>
+                <div class="msg" id="orderMsg"></div>
+            </div>
+
+            <div class="panel pay-box" id="payPanel" style="display:none">
+                <h2>결제</h2>
+                <div id="payInfo"></div>
+                <label>카드번호</label>
+                <input id="cardNo" class="full" value="1234-5678-9012-3456">
+                <button class="big" id="payBtn">결제하기</button>
+                <div class="msg" id="payMsg"></div>
+            </div>
+        </aside>
+    </div>
+</main>
+
+<script src="/js/common.js"></script>
+<script>
+    var products = [];
+    var cart = {};   // productId -> quantity
+    var createdOrderId = null;
+
+    renderHeader('shop');
+    prefillReceiver();
+    loadProducts();
+
+    document.getElementById('category').addEventListener('change', loadProducts);
+    document.getElementById('usePoint').addEventListener('change', preview);
+    document.getElementById('orderBtn').addEventListener('click', createOrder);
+    document.getElementById('payBtn').addEventListener('click', pay);
+
+    function prefillReceiver() {
+        api('GET', '/api/members/' + getMemberId()).then(function (res) {
+            if (!res.ok) return;
+            document.getElementById('receiverName').value = res.data.name;
+            document.getElementById('receiverPhone').value = res.data.phone;
+        });
+    }
+
+    function loadProducts() {
+        var category = document.getElementById('category').value;
+        var url = '/api/products' + (category ? '?category=' + encodeURIComponent(category) : '');
+        api('GET', url).then(function (res) {
+            products = res.data || [];
+            renderProducts();
+        });
+    }
+
+    function renderProducts() {
+        var html = products.map(function (p) {
+            var onSale = p.status === 'ON_SALE';
+            var statusText = p.status === 'SOLD_OUT' ? '품절' : p.status === 'STOPPED' ? '판매중지' : '재고 ' + p.stock + '개';
+            return '<div class="card' + (onSale ? '' : ' disabled') + '">' +
+                '<div class="cat">' + escapeHtml(p.category) + ' · #' + p.id + '</div>' +
+                '<div class="name">' + escapeHtml(p.name) + '</div>' +
+                '<div class="price">' + formatPrice(p.price) + '</div>' +
+                '<div class="stock">' + statusText + '</div>' +
+                '<div class="row">' +
+                '<input type="number" min="1" value="1" id="qty-' + p.id + '"' + (onSale ? '' : ' disabled') + '>' +
+                '<button class="secondary" onclick="addToCart(' + p.id + ')"' + (onSale ? '' : ' disabled') + '>담기</button>' +
+                '</div></div>';
+        }).join('');
+        document.getElementById('products').innerHTML = html || '<div class="empty">상품이 없습니다.</div>';
+    }
+
+    function findProduct(id) {
+        for (var i = 0; i < products.length; i++) {
+            if (products[i].id === id) return products[i];
+        }
+        return null;
+    }
+
+    function addToCart(id) {
+        var qty = Number(document.getElementById('qty-' + id).value) || 1;
+        cart[id] = (cart[id] || 0) + qty;
+        renderCart();
+    }
+
+    function removeFromCart(id) {
+        delete cart[id];
+        renderCart();
+    }
+
+    function cartItems() {
+        return Object.keys(cart).map(function (id) {
+            return { productId: Number(id), quantity: cart[id] };
+        });
+    }
+
+    function renderCart() {
+        var items = cartItems();
+        if (items.length === 0) {
+            document.getElementById('cart').innerHTML = '<div class="empty">담은 상품이 없습니다.</div>';
+        } else {
+            document.getElementById('cart').innerHTML = items.map(function (item) {
+                var p = findProduct(item.productId);
+                var name = p ? p.name : '상품 #' + item.productId;
+                var price = p ? p.price * item.quantity : 0;
+                return '<div class="row between" style="padding:4px 0">' +
+                    '<span>' + escapeHtml(name) + ' × ' + item.quantity + '</span>' +
+                    '<span>' + formatPrice(price) +
+                    ' <button class="danger" style="padding:2px 6px" onclick="removeFromCart(' + item.productId + ')">×</button></span>' +
+                    '</div>';
+            }).join('');
+        }
+        document.getElementById('orderBtn').disabled = items.length === 0;
+        preview();
+    }
+
+    function preview() {
+        var items = cartItems();
+        if (items.length === 0) {
+            setPrices({ totalPrice: 0, discountPrice: 0, shippingFee: 0, usePoint: 0, payPrice: 0 });
+            return;
+        }
+        var usePoint = Number(document.getElementById('usePoint').value) || 0;
+        api('POST', '/api/orders/preview', { items: items, usePoint: usePoint }).then(function (res) {
+            if (res.ok) setPrices(res.data.data);
+        });
+    }
+
+    function setPrices(p) {
+        document.getElementById('pTotal').textContent = formatPrice(p.totalPrice);
+        document.getElementById('pDiscount').textContent = '-' + formatPrice(p.discountPrice);
+        document.getElementById('pShipping').textContent = formatPrice(p.shippingFee);
+        document.getElementById('pPoint').textContent = '-' + formatPrice(p.usePoint);
+        document.getElementById('pPay').textContent = formatPrice(p.payPrice);
+    }
+
+    function createOrder() {
+        var msg = document.getElementById('orderMsg');
+        var body = {
+            items: cartItems(),
+            usePoint: Number(document.getElementById('usePoint').value) || 0,
+            receiverName: document.getElementById('receiverName').value,
+            receiverPhone: document.getElementById('receiverPhone').value,
+            address: document.getElementById('address').value,
+            memo: document.getElementById('memo').value
+        };
+        api('POST', '/api/orders', body).then(function (res) {
+            if (!res.ok) {
+                showMsg(msg, false, '주문 실패: ' + errorMessage(res));
+                return;
+            }
+            var order = res.data.data;
+            createdOrderId = order.orderId;
+            showMsg(msg, true, '주문이 접수되었습니다. (주문번호 ' + order.orderNumber + ')');
+            cart = {};
+            renderCart();
+            loadProducts();
+            loadMemberPoint();
+
+            document.getElementById('payPanel').style.display = 'block';
+            document.getElementById('payInfo').innerHTML =
+                '<div class="row between"><span>주문번호</span><b>' + escapeHtml(order.orderNumber) + '</b></div>' +
+                '<div class="row between"><span>결제 금액</span><b>' + formatPrice(order.payPrice) + '</b></div>';
+            document.getElementById('payMsg').className = 'msg';
+            document.getElementById('payBtn').disabled = false;
+        });
+    }
+
+    function pay() {
+        var msg = document.getElementById('payMsg');
+        var btn = document.getElementById('payBtn');
+        btn.disabled = true;
+        api('POST', '/api/payments', {
+            orderId: createdOrderId,
+            method: 'CARD',
+            cardNo: document.getElementById('cardNo').value
+        }).then(function (res) {
+            if (!res.ok) {
+                showMsg(msg, false, '결제 실패: ' + errorMessage(res));
+                btn.disabled = false;
+                return;
+            }
+            showMsg(msg, true, '결제가 완료되었습니다. (' + formatPrice(res.data.amount) + ')\n내 주문 메뉴에서 확인할 수 있습니다.');
+            loadMemberPoint();
+        });
+    }
+</script>
+</body>
+</html>

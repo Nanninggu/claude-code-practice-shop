@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ShopNow - 관리자</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header></header>
+<main>
+    <div class="panel">
+        <div class="row between">
+            <h2>월별 매출</h2>
+            <div class="row">
+                <input type="number" id="year" style="width:80px">년
+                <input type="number" id="month" style="width:60px" min="1" max="12">월
+                <button class="secondary" onclick="loadStats()">조회</button>
+            </div>
+        </div>
+        <div class="stats" id="stats"></div>
+        <h2 style="margin-top:16px">인기 상품 TOP 5</h2>
+        <table class="list">
+            <thead><tr><th>순위</th><th>상품</th><th class="num">판매 수량</th><th class="num">판매 금액</th></tr></thead>
+            <tbody id="topProducts"></tbody>
+        </table>
+    </div>
+
+    <div class="panel">
+        <div class="row between">
+            <h2>주문 관리</h2>
+            <div class="row">
+                <label style="margin:0">관리자 토큰</label>
+                <input id="adminToken" type="password" placeholder="X-ADMIN-TOKEN">
+            </div>
+        </div>
+        <div class="row" style="margin-bottom:12px; flex-wrap: wrap">
+            <select id="status">
+                <option value="">전체 상태</option>
+                <option value="CREATED">결제대기</option>
+                <option value="PAID">결제완료</option>
+                <option value="PREPARING">배송준비</option>
+                <option value="SHIPPED">배송중</option>
+                <option value="DELIVERED">배송완료</option>
+                <option value="CONFIRMED">구매확정</option>
+                <option value="CANCELED">취소</option>
+            </select>
+            <input id="keyword" placeholder="주문번호 또는 받는 분">
+            <input id="from" type="date">
+            <input id="to" type="date">
+            <button onclick="search()">검색</button>
+            <button class="secondary" onclick="exportCsv()">CSV 다운로드</button>
+        </div>
+        <div class="msg" id="msg"></div>
+        <div id="count" style="margin:8px 0; color:#6b7280"></div>
+        <table class="list">
+            <thead>
+            <tr><th>ID</th><th>주문번호</th><th>주문일시</th><th>회원</th><th>받는 분</th><th>상태</th><th class="num">결제금액</th><th>처리</th></tr>
+            </thead>
+            <tbody id="orders"></tbody>
+        </table>
+    </div>
+</main>
+
+<script src="/js/common.js"></script>
+<script>
+    renderHeader('admin');
+
+    var now = new Date();
+    document.getElementById('year').value = now.getFullYear();
+    document.getElementById('month').value = now.getMonth() + 1;
+    loadStats();
+    search();
+
+    function loadStats() {
+        var y = document.getElementById('year').value;
+        var m = document.getElementById('month').value;
+        api('GET', '/admin/stats/monthly?year=' + y + '&month=' + m).then(function (res) {
+            if (!res.ok) return;
+            var s = res.data;
+            document.getElementById('stats').innerHTML =
+                '<div><span>주문 건수</span><b>' + formatNumber(s.orderCount) + '건</b></div>' +
+                '<div><span>매출</span><b>' + formatPrice(s.salesAmount) + '</b></div>' +
+                '<div><span>취소 금액</span><b>' + formatPrice(s.cancelAmount) + '</b></div>' +
+                '<div><span>평균 주문 금액</span><b>' + formatPrice(s.averageOrderAmount) + '</b></div>';
+        });
+        api('GET', '/admin/stats/top-products?limit=5').then(function (res) {
+            if (!res.ok) return;
+            document.getElementById('topProducts').innerHTML = res.data.map(function (r) {
+                return '<tr><td>' + r.rank + '</td><td>' + escapeHtml(r.productName) + '</td>' +
+                    '<td class="num">' + formatNumber(r.quantity) + '</td><td class="num">' + formatPrice(r.amount) + '</td></tr>';
+            }).join('');
+        });
+    }
+
+    function search() {
+        var params = new URLSearchParams();
+        ['status', 'keyword', 'from', 'to'].forEach(function (k) {
+            var v = document.getElementById(k).value;
+            if (v) params.append(k, v);
+        });
+        api('GET', '/admin/orders/search?' + params.toString()).then(function (res) {
+            if (!res.ok) {
+                showMsg(document.getElementById('msg'), false, errorMessage(res));
+                return;
+            }
+            var orders = res.data.data;
+            document.getElementById('count').textContent = '총 ' + orders.length + '건';
+            document.getElementById('orders').innerHTML = orders.map(function (o) {
+                return '<tr>' +
+                    '<td>' + o.orderId + '</td>' +
+                    '<td>' + o.orderNumber + '</td>' +
+                    '<td>' + formatDate(o.createdAt) + '</td>' +
+                    '<td>' + o.memberName + '</td>' +
+                    '<td>' + o.receiverName + (o.memo ? '<br><small style="color:#6b7280">' + o.memo + '</small>' : '') + '</td>' +
+                    '<td><span class="badge ' + o.status + '">' + STATUS_LABEL[o.status] + '</span></td>' +
+                    '<td class="num">' + formatPrice(o.payPrice) + '</td>' +
+                    '<td>' + actionButtons(o) + '</td>' +
+                    '</tr>';
+            }).join('');
+        });
+    }
+
+    function actionButtons(o) {
+        var b = '';
+        if (o.status === 'PAID') b += '<button class="secondary" onclick="prepare(' + o.orderId + ')">배송준비</button> ';
+        if (o.status === 'PREPARING') b += '<button class="secondary" onclick="ship(' + o.orderId + ')">발송</button> ';
+        if (o.status === 'SHIPPED') b += '<button class="secondary" onclick="deliver(' + o.orderId + ')">배송완료</button> ';
+        if (o.status !== 'CANCELED') b += '<button class="danger" onclick="forceCancel(' + o.orderId + ')">강제취소</button>';
+        return b;
+    }
+
+    function token() {
+        return { 'X-ADMIN-TOKEN': document.getElementById('adminToken').value };
+    }
+
+    function done(res, text) {
+        var msg = document.getElementById('msg');
+        if (!res.ok) {
+            showMsg(msg, false, errorMessage(res));
+            return;
+        }
+        showMsg(msg, true, text);
+        search();
+        loadStats();
+    }
+
+    function prepare(id) {
+        api('POST', '/admin/orders/' + id + '/prepare', undefined, token())
+            .then(function (res) { done(res, id + '번 주문 배송준비 처리'); });
+    }
+
+    function ship(id) {
+        var no = prompt('송장번호를 입력하세요', '6' + Date.now().toString().substring(2));
+        if (!no) return;
+        api('POST', '/admin/orders/' + id + '/ship?trackingNo=' + encodeURIComponent(no), undefined, token())
+            .then(function (res) { done(res, id + '번 주문 발송 처리'); });
+    }
+
+    function deliver(id) {
+        api('POST', '/admin/orders/' + id + '/deliver', undefined, token())
+            .then(function (res) { done(res, id + '번 주문 배송완료 처리'); });
+    }
+
+    function forceCancel(id) {
+        var reason = prompt('강제 취소 사유', 'CS 요청');
+        if (!reason) return;
+        api('POST', '/admin/orders/' + id + '/force-cancel?reason=' + encodeURIComponent(reason))
+            .then(function (res) { done(res, id + '번 주문 강제취소 완료'); });
+    }
+
+    function exportCsv() {
+        var from = document.getElementById('from').value;
+        var to = document.getElementById('to').value;
+        if (!from || !to) {
+            showMsg(document.getElementById('msg'), false, 'CSV 다운로드는 기간(시작일, 종료일)을 선택해주세요.');
+            return;
+        }
+        location.href = '/admin/orders/export?from=' + from + '&to=' + to;
+    }
+</script>
+</body>
+</html>
