@@ -39,8 +39,10 @@ public class OrderController {
     }
 
     @GetMapping
-    public ApiResponse<List<OrderResponse>> getMyOrders(@RequestHeader("X-MEMBER-ID") Long memberId) {
-        return ApiResponse.ok(orderService.getMyOrders(memberId));
+    public ApiResponse<List<OrderResponse>> getMyOrders(@RequestHeader("X-MEMBER-ID") Long memberId,
+                                                       @RequestParam(required = false) Integer page,
+                                                       @RequestParam(required = false) Integer size) {
+        return ApiResponse.ok(orderService.getMyOrders(memberId, page, size));
     }
 
     @GetMapping("/summary")

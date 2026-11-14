@@ -14,4 +14,6 @@ public class Constants {
 
     public static final int MIN_USE_POINT = 1000;
     public static final int MAX_ORDER_QUANTITY = 99;
+
+    public static final int MAX_PAGE_SIZE = 100;
 }

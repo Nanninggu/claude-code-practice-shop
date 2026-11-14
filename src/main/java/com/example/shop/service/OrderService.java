@@ -8,6 +8,8 @@ import com.example.shop.util.DateUtil;
 import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -264,8 +266,20 @@ public class OrderService {
     /**
      * 내 주문 목록
      */
-    public List<OrderResponse> getMyOrders(Long memberId) {
-        List<Order> orders = orderRepository.findByMemberIdOrderByCreatedAtDesc(memberId);
+    public List<OrderResponse> getMyOrders(Long memberId, Integer page, Integer size) {
+        List<Order> orders;
+        if (page == null && size == null) {
+            orders = orderRepository.findByMemberIdOrderByCreatedAtDesc(memberId);
+        } else {
+            if (page == null || size == null) {
+                throw new IllegalArgumentException("page와 size는 함께 지정해야 합니다.");
+            }
+            if (page < 0 || size < 1 || size > Constants.MAX_PAGE_SIZE) {
+                throw new IllegalArgumentException("page는 0 이상, size는 1~" + Constants.MAX_PAGE_SIZE + " 이어야 합니다.");
+            }
+            Sort sort = Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id"));
+            orders = orderRepository.findByMemberId(memberId, PageRequest.of(page, size, sort)).getContent();
+        }
         List<OrderResponse> result = new ArrayList<>();
         for (Order order : orders) {
             result.add(toResponse(order));

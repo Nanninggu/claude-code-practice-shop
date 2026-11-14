@@ -32,6 +32,10 @@ Content-Type: application/json
 GET http://localhost:8080/api/orders
 X-MEMBER-ID: 4
 
+### 내 주문 목록 (쪽 단위: page, size를 함께 지정)
+GET http://localhost:8080/api/orders?page=0&size=20
+X-MEMBER-ID: 4
+
 ### 주문 취소
 POST http://localhost:8080/api/orders/304/cancel
 Content-Type: application/json
