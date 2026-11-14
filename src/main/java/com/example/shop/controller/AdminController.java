@@ -2,6 +2,7 @@ package com.example.shop.controller;
 
 import com.example.shop.common.ApiResponse;
 import com.example.shop.dto.OrderResponse;
+import com.example.shop.service.AdminOrderService;
 import com.example.shop.service.OrderService;
 import com.example.shop.util.Constants;
 import lombok.RequiredArgsConstructor;
@@ -21,13 +22,14 @@ import java.util.Map;
 public class AdminController {
 
     private final OrderService orderService;
+    private final AdminOrderService adminOrderService;
 
     @GetMapping("/orders/search")
     public ApiResponse<List<OrderResponse>> search(@RequestParam(required = false) String status,
                                                    @RequestParam(required = false) String keyword,
                                                    @RequestParam(required = false) String from,
                                                    @RequestParam(required = false) String to) {
-        return ApiResponse.ok(orderService.searchOrdersForAdmin(status, keyword, from, to));
+        return ApiResponse.ok(adminOrderService.searchOrdersForAdmin(status, keyword, from, to));
     }
 
     @PostMapping("/orders/{orderId}/prepare")
@@ -61,27 +63,27 @@ public class AdminController {
 
     @GetMapping("/stats/daily")
     public Map<String, Object> daily(@RequestParam String date) {
-        return orderService.getDailySales(LocalDate.parse(date));
+        return adminOrderService.getDailySales(LocalDate.parse(date));
     }
 
     @GetMapping("/stats/monthly")
     public Map<String, Object> monthly(@RequestParam int year, @RequestParam int month) {
-        return orderService.getMonthlySales(year, month);
+        return adminOrderService.getMonthlySales(year, month);
     }
 
     @GetMapping("/stats/top-products")
     public List<Map<String, Object>> topProducts(@RequestParam(defaultValue = "10") int limit) {
-        return orderService.getTopProducts(limit);
+        return adminOrderService.getTopProducts(limit);
     }
 
     @GetMapping("/stats/grade")
     public Map<String, Object> grade() {
-        return orderService.getGradeStatistics();
+        return adminOrderService.getGradeStatistics();
     }
 
     @GetMapping("/orders/export")
     public ResponseEntity<byte[]> export(@RequestParam String from, @RequestParam String to) {
-        String csv = orderService.exportOrdersCsv(LocalDate.parse(from), LocalDate.parse(to));
+        String csv = adminOrderService.exportOrdersCsv(LocalDate.parse(from), LocalDate.parse(to));
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=orders.csv")
                 .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
