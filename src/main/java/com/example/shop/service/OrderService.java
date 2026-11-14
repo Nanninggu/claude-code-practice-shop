@@ -316,7 +316,7 @@ public class OrderService {
         }
 
         Payment payment = paymentRepository.findByOrderId(orderId);
-        if (payment.getStatus() == PaymentStatus.APPROVED || payment.getStatus() == PaymentStatus.PARTIAL_CANCELED) {
+        if (payment != null && (payment.getStatus() == PaymentStatus.APPROVED || payment.getStatus() == PaymentStatus.PARTIAL_CANCELED)) {
             int refundAmount = payment.getAmount() - payment.getCanceledAmount();
             paymentService.refund(orderId, refundAmount);
 
