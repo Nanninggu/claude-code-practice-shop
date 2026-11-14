@@ -64,23 +64,11 @@ public class OrderService {
     public OrderResponse createOrder(Long memberId, OrderCreateRequest req) {
         log.info("주문 생성 시작 memberId={}", memberId);
 
-        Member member = memberRepository.findById(memberId).orElse(null);
-        if (member == null) {
-            throw new IllegalArgumentException("회원을 찾을 수 없습니다. id=" + memberId);
-        }
+        Member member = findMemberOrThrow(memberId);
 
         validateOrderRequest(req);
 
-        Order order = new Order();
-        order.setOrdNo(generateOrdNo());
-        order.setMember(member);
-        order.setStatus(OrderStatus.CREATED);
-        order.setReceiverName(req.getReceiverName());
-        order.setReceiverPhone(req.getReceiverPhone());
-        order.setAddress(req.getAddress());
-        order.setMemo(req.getMemo());
-        order.setCreatedAt(LocalDateTime.now());
-        order.setUpdatedAt(LocalDateTime.now());
+        Order order = newOrder(member, req.getReceiverName(), req.getReceiverPhone(), req.getAddress(), req.getMemo());
 
         int totalPrice = 0;
         for (OrderCreateRequest.Item reqItem : req.getItems()) {
@@ -96,21 +84,7 @@ public class OrderService {
             }
 
             // 재고 차감
-            product.setStock(product.getStock() - reqItem.getQuantity());
-            if (product.getStock() == 0) {
-                product.setStatus(ProductStatus.SOLD_OUT);
-            }
-            product.setUpdatedAt(LocalDateTime.now());
-
-            OrderItem item = new OrderItem();
-            item.setOrder(order);
-            item.setProduct(product);
-            item.setProductName(product.getName());
-            item.setUnitPrice(product.getPrice());
-            item.setQuantity(reqItem.getQuantity());
-            item.setCanceledQuantity(0);
-            item.setStatus(OrderItemStatus.ORDERED);
-            order.getItems().add(item);
+            addOrderItem(order, product, reqItem.getQuantity());
 
             totalPrice += product.getPrice() * reqItem.getQuantity();
         }
@@ -154,9 +128,7 @@ public class OrderService {
         order.setUsedPoint(usePoint);
         order.setPayPrice(totalPrice - discountPrice - couponDiscount + shippingFee - usePoint);
 
-        orderRepository.save(order);
-
-        notificationService.sendOrderCreated(member, order);
+        saveAndNotify(order, member);
 
         log.info("주문 생성 완료 ordNo={}, payPrice={}", order.getOrdNo(), order.getPayPrice());
         return toResponse(order);
@@ -174,21 +146,10 @@ public class OrderService {
             throw new IllegalArgumentException("본인 주문만 재주문할 수 있습니다.");
         }
 
-        Member member = memberRepository.findById(memberId).orElse(null);
-        if (member == null) {
-            throw new IllegalArgumentException("회원을 찾을 수 없습니다. id=" + memberId);
-        }
+        Member member = findMemberOrThrow(memberId);
 
-        Order order = new Order();
-        order.setOrdNo(generateOrdNo());
-        order.setMember(member);
-        order.setStatus(OrderStatus.CREATED);
-        order.setReceiverName(prevOrder.getReceiverName());
-        order.setReceiverPhone(prevOrder.getReceiverPhone());
-        order.setAddress(prevOrder.getAddress());
-        order.setMemo(prevOrder.getMemo());
-        order.setCreatedAt(LocalDateTime.now());
-        order.setUpdatedAt(LocalDateTime.now());
+        Order order = newOrder(member, prevOrder.getReceiverName(), prevOrder.getReceiverPhone(),
+                prevOrder.getAddress(), prevOrder.getMemo());
 
         int totalPrice = 0;
         for (OrderItem prevItem : prevOrder.getItems()) {
@@ -204,21 +165,7 @@ public class OrderService {
                 throw new IllegalStateException("재고가 부족합니다: " + product.getName());
             }
 
-            product.setStock(product.getStock() - quantity);
-            if (product.getStock() == 0) {
-                product.setStatus(ProductStatus.SOLD_OUT);
-            }
-            product.setUpdatedAt(LocalDateTime.now());
-
-            OrderItem item = new OrderItem();
-            item.setOrder(order);
-            item.setProduct(product);
-            item.setProductName(product.getName());
-            item.setUnitPrice(product.getPrice());
-            item.setQuantity(quantity);
-            item.setCanceledQuantity(0);
-            item.setStatus(OrderItemStatus.ORDERED);
-            order.getItems().add(item);
+            addOrderItem(order, product, quantity);
 
             totalPrice += product.getPrice() * quantity;
         }
@@ -236,11 +183,56 @@ public class OrderService {
         order.setUsedPoint(0);
         order.setPayPrice(totalPrice - discountPrice + shippingFee);
 
+        saveAndNotify(order, member);
+
+        return toResponse(order);
+    }
+
+    private Member findMemberOrThrow(Long memberId) {
+        Member member = memberRepository.findById(memberId).orElse(null);
+        if (member == null) {
+            throw new IllegalArgumentException("회원을 찾을 수 없습니다. id=" + memberId);
+        }
+        return member;
+    }
+
+    private Order newOrder(Member member, String receiverName, String receiverPhone, String address, String memo) {
+        Order order = new Order();
+        order.setOrdNo(generateOrdNo());
+        order.setMember(member);
+        order.setStatus(OrderStatus.CREATED);
+        order.setReceiverName(receiverName);
+        order.setReceiverPhone(receiverPhone);
+        order.setAddress(address);
+        order.setMemo(memo);
+        order.setCreatedAt(LocalDateTime.now());
+        order.setUpdatedAt(LocalDateTime.now());
+        return order;
+    }
+
+    /** 재고를 차감하고 주문 항목을 추가한다. 재고/판매상태 검증은 호출 측 책임. */
+    private void addOrderItem(Order order, Product product, int quantity) {
+        product.setStock(product.getStock() - quantity);
+        if (product.getStock() == 0) {
+            product.setStatus(ProductStatus.SOLD_OUT);
+        }
+        product.setUpdatedAt(LocalDateTime.now());
+
+        OrderItem item = new OrderItem();
+        item.setOrder(order);
+        item.setProduct(product);
+        item.setProductName(product.getName());
+        item.setUnitPrice(product.getPrice());
+        item.setQuantity(quantity);
+        item.setCanceledQuantity(0);
+        item.setStatus(OrderItemStatus.ORDERED);
+        order.getItems().add(item);
+    }
+
+    private void saveAndNotify(Order order, Member member) {
         orderRepository.save(order);
 
         notificationService.sendOrderCreated(member, order);
-
-        return toResponse(order);
     }
 
     // =====================================================================
