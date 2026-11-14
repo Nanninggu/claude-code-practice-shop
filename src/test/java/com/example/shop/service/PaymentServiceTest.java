@@ -6,7 +6,6 @@ import com.example.shop.repository.OrderRepository;
 import com.example.shop.repository.PaymentRepository;
 import com.example.shop.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -195,8 +194,6 @@ class PaymentServiceTest {
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.CANCELED);
     }
 
-    @Disabled("규칙 위반: refund()에 '고객이 낸 돈 초과 불가' 검증이 없다. "
-            + "결제 10,000원에 10,001원 환불을 요청하면 예외 없이 canceledAmount=10,001, 상태 CANCELED 로 처리된다.")
     @Test
     void R6_결제금액보다_많은_금액은_한번에_환불할_수_없다() {
         Payment payment = savePayment(NO_ORDER, "T-1", 10000);
@@ -206,8 +203,6 @@ class PaymentServiceTest {
         assertThat(payment.getCanceledAmount()).isZero();
     }
 
-    @Disabled("규칙 위반: 누적 환불액이 결제금액을 넘는지 검사하지 않는다. "
-            + "결제 10,000원에 6,000원 환불 후 다시 5,000원을 환불하면 합계 11,000원이 통과된다.")
     @Test
     void R7_누적_환불액이_결제금액을_넘을_수_없다() {
         Payment payment = savePayment(NO_ORDER, "T-1", 10000);

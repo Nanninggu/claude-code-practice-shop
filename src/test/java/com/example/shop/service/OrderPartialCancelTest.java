@@ -7,7 +7,6 @@ import com.example.shop.repository.OrderRepository;
 import com.example.shop.repository.PaymentRepository;
 import com.example.shop.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -181,9 +180,6 @@ class OrderPartialCancelTest {
 
     // ------------------------------------------------------------ 업무 규칙 검증
 
-    @Disabled("규칙 위반: 환불액을 단가×수량으로만 계산해 등급 할인 몫을 빼지 않는다. "
-            + "실버(3%) 10,000원×2개(할인 600원, 결제 22,400원)에서 1개 취소 시 기대 9,700원인데 10,000원이 환불된다. "
-            + "(코드의 FIXME '부분취소 시 배송비/할인 재계산 필요'와 같은 원인)")
     @Test
     void C12_할인받은_주문을_일부_취소하면_할인_몫을_뺀_9700원을_환불한다() {
         // 할인 600 = 20,000 × 3%. 1개(10,000원)의 할인 몫 = 600 × 10,000 / 20,000 = 300 → 환불 9,700원
@@ -195,8 +191,6 @@ class OrderPartialCancelTest {
         assertThat(paymentRepository.findByOrderId(order.getId()).getCanceledAmount()).isEqualTo(9700);
     }
 
-    @Disabled("규칙 위반: 골드(5%) 20,000원×1개(할인 1,000원, 결제 22,000원) 전량 취소 시 기대 환불 19,000원(상품 금액 - 할인), "
-            + "실제로는 할인 몫을 빼지 않아 20,000원이 환불된다.")
     @Test
     void C13_할인받은_주문을_전량_취소하면_상품금액에서_할인액을_뺀_19000원을_환불한다() {
         // 20,000 - 1,000(5%) + 배송비 3,000 = 22,000원 결제. 배송비 환불 정책은 규칙에 없으므로 상품분만 검증한다.
@@ -208,8 +202,6 @@ class OrderPartialCancelTest {
         assertThat(paymentRepository.findByOrderId(order.getId()).getCanceledAmount()).isEqualTo(19000);
     }
 
-    @Disabled("규칙 위반: 포인트로 결제금액이 줄어든 주문에서 부분취소 환불액이 고객이 낸 돈을 넘을 수 있다. "
-            + "브론즈 20,000원×2개 + 포인트 20,000점 사용(결제 23,000원)에서 1개씩 2번 취소하면 누적 환불 40,000원이 된다.")
     @Test
     void C14_누적_환불액이_실결제금액을_넘을_수_없다() {
         // 40,000 + 배송비 3,000 - 포인트 20,000 = 23,000원 결제

@@ -78,6 +78,11 @@ public class PaymentService {
             throw new IllegalStateException("결제 내역이 없습니다. orderId=" + orderId);
         }
 
+        if (amount > payment.getAmount() - payment.getCanceledAmount()) {
+            throw new IllegalArgumentException("환불 가능 금액을 초과했습니다. 남은 금액="
+                    + (payment.getAmount() - payment.getCanceledAmount()));
+        }
+
         PgResponse res = pgClient.cancel(payment.getPgTid(), amount);
         if (!res.isSuccess()) {
             throw new IllegalStateException("환불 실패: " + res.getErrorMessage());

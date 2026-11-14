@@ -403,7 +403,11 @@ public class OrderService {
         }
 
         // 환불 금액 계산
-        int refundAmount = target.getUnitPrice() * quantity;
+        // 상품 금액에서 할인(등급+쿠폰) 몫을 비례 배분해 뺀다.
+        int itemAmount = target.getUnitPrice() * quantity;
+        int discountShare = order.getTotalPrice() == 0 ? 0
+                : (int) ((long) (order.getDiscountPrice() + order.getCouponDiscount()) * itemAmount / order.getTotalPrice());
+        int refundAmount = itemAmount - discountShare;
         paymentService.refund(orderId, refundAmount);
 
         target.setCanceledQuantity(target.getCanceledQuantity() + quantity);
