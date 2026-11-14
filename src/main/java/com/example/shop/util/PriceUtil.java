@@ -32,7 +32,7 @@ public class PriceUtil {
         if (grade == MemberGrade.VIP) {
             return 0;
         }
-        if (amount > Constants.FREE_SHIPPING_THRESHOLD) {
+        if (amount >= Constants.FREE_SHIPPING_THRESHOLD) {
             return 0;
         }
         return Constants.SHIPPING_FEE;
