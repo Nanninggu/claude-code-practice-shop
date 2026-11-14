@@ -845,11 +845,9 @@ public class OrderService {
         if (coupon == null) {
             throw new IllegalArgumentException("존재하지 않는 쿠폰입니다. code=" + code.trim());
         }
-        if (coupon.isUsed()) {
-            throw new IllegalStateException("이미 사용된 쿠폰입니다.");
-        }
-        if (coupon.isExpired(LocalDate.now())) {
-            throw new IllegalStateException("만료된 쿠폰입니다.");
+        if (!coupon.isUsable(LocalDate.now())) {
+            // 사용 불가 사유 구분 (판단 기준은 Coupon.isUsable)
+            throw new IllegalStateException(coupon.isUsed() ? "이미 사용된 쿠폰입니다." : "만료된 쿠폰입니다.");
         }
     }
 

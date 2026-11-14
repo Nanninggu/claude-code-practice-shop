@@ -32,6 +32,11 @@ public class Coupon {
         return expiresAt != null && today.isAfter(expiresAt);
     }
 
+    /** 사용 가능 여부 (아직 안 쓰고 만료 안 됨). 주문 검증과 목록 조회가 공통으로 사용 */
+    public boolean isUsable(LocalDate today) {
+        return !used && !isExpired(today);
+    }
+
     /** 할인 대상 금액을 넘지 않는 쿠폰 할인액 */
     public int calcDiscount(int amount) {
         int discount = (type == CouponType.PERCENT) ? amount * discountValue / 100 : discountValue;
