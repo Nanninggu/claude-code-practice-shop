@@ -33,6 +33,12 @@ public class Order {
 
     private int totalPrice;     // 상품 금액 합계
     private int discountPrice;  // 등급 할인 금액
+    private int couponDiscount; // 쿠폰 할인 금액
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "coupon_id")
+    private Coupon coupon;      // 사용한 쿠폰 (없으면 null)
+
     private int shippingFee;    // 배송비
     private int usedPoint;      // 사용 포인트
     private int payPrice;       // 실 결제 금액

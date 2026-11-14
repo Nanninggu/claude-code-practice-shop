@@ -48,6 +48,9 @@ public class OrderService {
     private PaymentRepository paymentRepository;
 
     @Autowired
+    private CouponRepository couponRepository;
+
+    @Autowired
     private PaymentService paymentService;
 
     @Autowired
@@ -122,11 +125,20 @@ public class OrderService {
         }
 
         // 등급 할인
-        // TODO 쿠폰 기능 추가 예정 (기획 확정 후)
         int discountPrice = calculateDiscount(totalPrice, member.getGrade());
 
+        // 쿠폰 (등급 할인 후 금액 기준)
+        int couponDiscount = 0;
+        if (hasCouponCode(req)) {
+            Coupon coupon = couponRepository.findByCode(req.getCouponCode().trim()).orElse(null);
+            validateCoupon(coupon, req.getCouponCode());
+            couponDiscount = coupon.calcDiscount(totalPrice - discountPrice);
+            coupon.setUsed(true);
+            order.setCoupon(coupon);
+        }
+
         // 배송비
-        int shippingFee = calculateShippingFee(totalPrice - discountPrice, member.getGrade());
+        int shippingFee = calculateShippingFee(totalPrice - discountPrice - couponDiscount, member.getGrade());
 
         // 포인트 사용
         int usePoint = req.getUsePoint();
@@ -137,7 +149,7 @@ public class OrderService {
             if (member.getPoint() < usePoint) {
                 throw new IllegalStateException("보유 포인트가 부족합니다.");
             }
-            int maxUsable = totalPrice - discountPrice + shippingFee;
+            int maxUsable = totalPrice - discountPrice - couponDiscount + shippingFee;
             if (usePoint > maxUsable) {
                 usePoint = maxUsable;
             }
@@ -146,9 +158,10 @@ public class OrderService {
 
         order.setTotalPrice(totalPrice);
         order.setDiscountPrice(discountPrice);
+        order.setCouponDiscount(couponDiscount);
         order.setShippingFee(shippingFee);
         order.setUsedPoint(usePoint);
-        order.setPayPrice(totalPrice - discountPrice + shippingFee - usePoint);
+        order.setPayPrice(totalPrice - discountPrice - couponDiscount + shippingFee - usePoint);
 
         orderRepository.save(order);
 
@@ -350,6 +363,9 @@ public class OrderService {
         Member member = order.getMember();
         member.setPoint(member.getPoint() + order.getUsedPoint());
 
+        // 쿠폰 복원
+        restoreCoupon(order);
+
         order.setStatus(OrderStatus.CANCELED);
         order.setCancelReason(reason);
         order.setCanceledAt(LocalDateTime.now());
@@ -448,6 +464,9 @@ public class OrderService {
         Member member = order.getMember();
         member.setPoint(member.getPoint() + order.getUsedPoint());
 
+        // 쿠폰 복원
+        restoreCoupon(order);
+
         order.setStatus(OrderStatus.CANCELED);
         order.setCancelReason("[관리자] " + reason);
         order.setCanceledAt(LocalDateTime.now());
@@ -474,6 +493,7 @@ public class OrderService {
                 }
                 item.setStatus(OrderItemStatus.CANCELED);
             }
+            restoreCoupon(order);
             order.setStatus(OrderStatus.CANCELED);
             order.setCancelReason("결제 시간 초과");
             order.setCanceledAt(LocalDateTime.now());
@@ -817,6 +837,30 @@ public class OrderService {
     // 금액 계산
     // =====================================================================
 
+    private boolean hasCouponCode(OrderCreateRequest req) {
+        return req.getCouponCode() != null && !req.getCouponCode().trim().isEmpty();
+    }
+
+    private void validateCoupon(Coupon coupon, String code) {
+        if (coupon == null) {
+            throw new IllegalArgumentException("존재하지 않는 쿠폰입니다. code=" + code.trim());
+        }
+        if (coupon.isUsed()) {
+            throw new IllegalStateException("이미 사용된 쿠폰입니다.");
+        }
+        if (coupon.isExpired(LocalDate.now())) {
+            throw new IllegalStateException("만료된 쿠폰입니다.");
+        }
+    }
+
+    // 주문 전체 취소 시 쿠폰 복원
+    private void restoreCoupon(Order order) {
+        Coupon coupon = order.getCoupon();
+        if (coupon != null) {
+            coupon.setUsed(false);
+        }
+    }
+
     private int calculateTotalPrice(List<OrderItem> items) {
         int total = 0;
         for (OrderItem item : items) {
@@ -874,15 +918,25 @@ public class OrderService {
         }
 
         int discountPrice = calculateDiscount(totalPrice, member.getGrade());
-        int shippingFee = calculateShippingFee(totalPrice - discountPrice, member.getGrade());
+
+        // 쿠폰: 검증만 하고 사용 처리는 하지 않는다 (락 없음)
+        int couponDiscount = 0;
+        if (hasCouponCode(req)) {
+            Coupon coupon = couponRepository.findFirstByCode(req.getCouponCode().trim()).orElse(null);
+            validateCoupon(coupon, req.getCouponCode());
+            couponDiscount = coupon.calcDiscount(totalPrice - discountPrice);
+        }
+
+        int shippingFee = calculateShippingFee(totalPrice - discountPrice - couponDiscount, member.getGrade());
         int usePoint = Math.min(req.getUsePoint(), member.getPoint());
 
         Map<String, Integer> result = new LinkedHashMap<>();
         result.put("totalPrice", totalPrice);
         result.put("discountPrice", discountPrice);
+        result.put("couponDiscount", couponDiscount);
         result.put("shippingFee", shippingFee);
         result.put("usePoint", usePoint);
-        result.put("payPrice", totalPrice - discountPrice + shippingFee - usePoint);
+        result.put("payPrice", totalPrice - discountPrice - couponDiscount + shippingFee - usePoint);
         return result;
     }
 
@@ -955,6 +1009,8 @@ public class OrderService {
         res.setMemberName(order.getMember().getName());
         res.setTotalPrice(order.getTotalPrice());
         res.setDiscountPrice(order.getDiscountPrice());
+        res.setCouponDiscount(order.getCouponDiscount());
+        res.setCouponCode(order.getCoupon() != null ? order.getCoupon().getCode() : null);
         res.setShippingFee(order.getShippingFee());
         res.setUsedPoint(order.getUsedPoint());
         res.setPayPrice(order.getPayPrice());

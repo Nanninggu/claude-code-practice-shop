@@ -45,8 +45,9 @@ public class PriceUtil {
         }
         MemberGrade grade = order.getMember().getGrade();
         int discount = calcDiscount(total, grade);
-        int shipping = calcShippingFee(total - discount, grade);
-        return total - discount + shipping - order.getUsedPoint();
+        int coupon = order.getCouponDiscount();
+        int shipping = calcShippingFee(total - discount - coupon, grade);
+        return total - discount - coupon + shipping - order.getUsedPoint();
     }
 
     public static String formatPrice(int price) {

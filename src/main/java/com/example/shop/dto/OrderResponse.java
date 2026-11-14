@@ -16,6 +16,8 @@ public class OrderResponse {
     private String memberName;
     private int totalPrice;
     private int discountPrice;
+    private int couponDiscount;
+    private String couponCode;
     private int shippingFee;
     private int usedPoint;
     private int payPrice;

@@ -11,6 +11,7 @@ public class OrderCreateRequest {
 
     private List<Item> items;
     private int usePoint;
+    private String couponCode;
     private String receiverName;
     private String receiverPhone;
     private String address;

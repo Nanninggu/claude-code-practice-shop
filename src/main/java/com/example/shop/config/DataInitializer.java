@@ -1,6 +1,7 @@
 package com.example.shop.config;
 
 import com.example.shop.domain.*;
+import com.example.shop.repository.CouponRepository;
 import com.example.shop.repository.MemberRepository;
 import com.example.shop.repository.OrderRepository;
 import com.example.shop.repository.PaymentRepository;
@@ -12,6 +13,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +31,7 @@ public class DataInitializer implements CommandLineRunner {
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
+    private final CouponRepository couponRepository;
 
     private int seedSeq = 900000;
 
@@ -65,6 +68,12 @@ public class DataInitializer implements CommandLineRunner {
         products.add(product("핸드크림 세트", "생활", 13750, 70, ProductStatus.ON_SALE));
         products.add(product("수건 5장 세트", "생활", 18000, 55, ProductStatus.ON_SALE));
         productRepository.saveAll(products);
+
+        // 쿠폰 시드
+        LocalDate nextYear = LocalDate.now().plusYears(1);
+        couponRepository.save(coupon("WELCOME3000", CouponType.FIXED, 3000, nextYear));
+        couponRepository.save(coupon("SAVE10", CouponType.PERCENT, 10, nextYear));
+        couponRepository.save(coupon("OLD2024", CouponType.FIXED, 3000, LocalDate.of(2024, 12, 31)));
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -118,6 +127,16 @@ public class DataInitializer implements CommandLineRunner {
 
         log.info("초기 데이터 생성 완료: 회원 {}명, 상품 {}개, 주문 {}건",
                 memberRepository.count(), productRepository.count(), orderRepository.count());
+    }
+
+    private Coupon coupon(String code, CouponType type, int value, LocalDate expiresAt) {
+        Coupon c = new Coupon();
+        c.setCode(code);
+        c.setType(type);
+        c.setDiscountValue(value);
+        c.setExpiresAt(expiresAt);
+        c.setUsed(false);
+        return c;
     }
 
     private Member member(String email, String name, String phone, MemberGrade grade, int point) {
