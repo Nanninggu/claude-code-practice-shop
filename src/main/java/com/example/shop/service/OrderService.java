@@ -51,6 +51,9 @@ public class OrderService {
     private CouponRepository couponRepository;
 
     @Autowired
+    private CouponUsageRepository couponUsageRepository;
+
+    @Autowired
     private PaymentService paymentService;
 
     @Autowired
@@ -164,6 +167,16 @@ public class OrderService {
         order.setPayPrice(totalPrice - discountPrice - couponDiscount + shippingFee - usePoint);
 
         orderRepository.save(order);
+
+        // 쿠폰 사용 이력 (주문 취소와 무관하게 보존)
+        if (order.getCoupon() != null) {
+            CouponUsage usage = new CouponUsage();
+            usage.setCouponCode(order.getCoupon().getCode());
+            usage.setOrdNo(order.getOrdNo());
+            usage.setDiscountAmount(couponDiscount);
+            usage.setUsedAt(LocalDateTime.now());
+            couponUsageRepository.save(usage);
+        }
 
         notificationService.sendOrderCreated(member, order);
 
@@ -337,7 +350,7 @@ public class OrderService {
         }
 
         Payment payment = paymentRepository.findByOrderId(orderId);
-        if (payment.getStatus() == PaymentStatus.APPROVED || payment.getStatus() == PaymentStatus.PARTIAL_CANCELED) {
+        if (payment != null && (payment.getStatus() == PaymentStatus.APPROVED || payment.getStatus() == PaymentStatus.PARTIAL_CANCELED)) {
             int refundAmount = payment.getAmount() - payment.getCanceledAmount();
             paymentService.refund(orderId, refundAmount);
 
