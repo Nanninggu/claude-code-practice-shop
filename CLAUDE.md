@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 ./gradlew bootRun                 # run server (port 8080, in-memory H2)
 ./gradlew build                   # compile + test
-./gradlew test                    # run tests (none exist yet; src/test is absent)
+./gradlew test                    # run tests (JUnit tests under src/test)
 ./gradlew test --tests 'com.example.shop.SomeTest.method'   # single test
 ```
 
@@ -25,7 +25,7 @@ Single-module Spring Boot app, package `com.example.shop`, classic layering: `co
 
 Key points that span files:
 
-- **OrderService is the large hub** (~all order logic: create, reorder, cancel, partial cancel, address change, confirm, price preview, expiring unpaid orders, admin search/stats/CSV). It uses field `@Autowired` injection and a class-level `@Transactional`. Price calculation (grade discount, shipping fee, point usage) is duplicated between `createOrder` and `reOrder`; keep them in sync when changing pricing.
+- **OrderService is the large hub** (create, reorder, cancel, partial cancel, address change, confirm, price preview, expiring unpaid orders). Admin search/stats/CSV live in `AdminOrderService`. It uses constructor injection and a class-level `@Transactional`. Price calculation (grade discount, shipping fee, point usage) is duplicated between `createOrder` and `reOrder`; keep them in sync when changing pricing.
 - **Order lifecycle**: `OrderStatus` (CREATED → PAID → PREPARING → SHIPPED → DELIVERED → CONFIRMED, plus CANCELED / PARTIAL_CANCELED); each `OrderItem` has its own status and `canceledQuantity`. Stock is decremented at order creation (not payment) and restored on cancel via `ProductService.increaseStock`; points are deducted at order creation and restored/clawed back on cancel.
 - **Payments**: `PaymentService` talks to the PG through the `PgClient` interface; the only implementation is `external/FakePgClient` (a `@Component`, no real network call despite `pg.api-url` in config).
 - **Scheduler**: `OrderCleanupScheduler` (enabled by `@EnableScheduling`) calls `OrderService.expireUnpaidOrders()` every 60s.
