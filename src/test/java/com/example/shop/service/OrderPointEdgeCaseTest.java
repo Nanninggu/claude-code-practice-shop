@@ -110,8 +110,6 @@ class OrderPointEdgeCaseTest {
         assertThat(order.getMember().getPoint()).isEqualTo(15000);
     }
 
-    @Disabled("규칙 위반: expireUnpaidOrders 가 재고/쿠폰만 복원하고 usedPoint 는 돌려주지 않는다. "
-            + "5,000점 사용 주문이 만료되면 보유 포인트가 20,000 이 아니라 15,000 으로 남는다.")
     @Test
     void QUIRK_E7_31분_지나_만료된_주문은_쓴_포인트를_돌려줘야_한다() {
         Order order = fixture.place(MemberGrade.BRONZE, 20000, 5000, new int[]{20000, 1});

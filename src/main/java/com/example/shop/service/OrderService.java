@@ -476,6 +476,8 @@ public class OrderService {
                 }
                 item.setStatus(OrderItemStatus.CANCELED);
             }
+            Member member = order.getMember();
+            member.setPoint(member.getPoint() + order.getUsedPoint());
             restoreCoupon(order);
             order.setStatus(OrderStatus.CANCELED);
             order.setCancelReason("결제 시간 초과");
