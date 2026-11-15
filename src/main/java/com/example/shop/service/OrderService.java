@@ -794,20 +794,4 @@ public class OrderService {
         res.setStatus(item.getStatus().name());
         return res;
     }
-
-    // public OrderResponse createOrderV1(Long memberId, Long productId, int quantity) {
-    //     Member member = memberRepository.findById(memberId).get();
-    //     Product product = productRepository.findById(productId).get();
-    //     if (product.getStock() < quantity) {
-    //         throw new RuntimeException("재고 부족");
-    //     }
-    //     product.setStock(product.getStock() - quantity);
-    //     Order order = new Order();
-    //     order.setMember(member);
-    //     order.setStatus(OrderStatus.CREATED);
-    //     order.setTotalPrice(product.getPrice() * quantity);
-    //     order.setPayPrice(product.getPrice() * quantity);
-    //     orderRepository.save(order);
-    //     return toResponse(order);
-    // }
 }
