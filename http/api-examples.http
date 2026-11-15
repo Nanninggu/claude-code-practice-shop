@@ -46,3 +46,7 @@ GET http://localhost:8080/admin/orders/search?status=PAID
 
 ### 관리자 - 월별 매출
 GET http://localhost:8080/admin/stats/monthly?year=2026&month=11
+
+### 내 포인트 조회
+GET http://localhost:8080/api/members/me/point
+X-MEMBER-ID: 4

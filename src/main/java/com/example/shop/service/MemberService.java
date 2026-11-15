@@ -1,6 +1,7 @@
 package com.example.shop.service;
 
 import com.example.shop.domain.Member;
+import com.example.shop.dto.MyPointResponse;
 import com.example.shop.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,11 @@ public class MemberService {
     public Member getMember(Long id) {
         return memberRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("회원을 찾을 수 없습니다. id=" + id));
+    }
+
+    @Transactional(readOnly = true)
+    public MyPointResponse getMyPoint(Long memberId) {
+        return new MyPointResponse(getMember(memberId));
     }
 
     public void addPoint(Long memberId, int point) {
