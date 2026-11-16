@@ -112,7 +112,7 @@
                     '<td>' + o.orderNumber + '</td>' +
                     '<td>' + formatDate(o.createdAt) + '</td>' +
                     '<td>' + o.memberName + '</td>' +
-                    '<td>' + o.receiverName + (o.memo ? '<br><small style="color:#6b7280">' + o.memo + '</small>' : '') + '</td>' +
+                    '<td>' + escapeHtml(o.receiverName) + (o.memo ? '<br><small style="color:#6b7280">' + escapeHtml(o.memo) + '</small>' : '') + '</td>' +
                     '<td><span class="badge ' + o.status + '">' + STATUS_LABEL[o.status] + '</span></td>' +
                     '<td class="num">' + formatPrice(o.payPrice) + '</td>' +
                     '<td>' + actionButtons(o) + '</td>' +
