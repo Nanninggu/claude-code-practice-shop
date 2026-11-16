@@ -257,7 +257,7 @@ public class OrderService {
      * 내 주문 목록
      */
     public List<OrderResponse> getMyOrders(Long memberId) {
-        List<Order> orders = orderRepository.findByMemberIdOrderByCreatedAtDesc(memberId);
+        List<Order> orders = orderRepository.findWithItemsByMemberId(memberId);
         List<OrderResponse> result = new ArrayList<>();
         for (Order order : orders) {
             result.add(toResponse(order));

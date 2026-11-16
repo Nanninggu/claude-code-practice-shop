@@ -7,6 +7,7 @@ import com.example.shop.util.DateUtil;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +26,8 @@ import java.util.*;
 public class AdminOrderService {
 
     private final OrderRepository orderRepository;
+
+    private final OrderItemRepository orderItemRepository;
 
     private final OrderService orderService;
 
@@ -153,45 +156,24 @@ public class AdminOrderService {
      * 인기 상품 TOP N (판매 수량 기준)
      */
     public List<Map<String, Object>> getTopProducts(int limit) {
-        List<Order> all = orderRepository.findAll();
-
-        Map<Long, Integer> quantityMap = new HashMap<>();
-        Map<Long, Integer> amountMap = new HashMap<>();
-        Map<Long, String> nameMap = new HashMap<>();
-
-        for (Order order : all) {
-            if (order.getStatus() == OrderStatus.CREATED || order.getStatus() == OrderStatus.CANCELED) {
-                continue;
-            }
-            for (OrderItem item : order.getItems()) {
-                if (item.getStatus() == OrderItemStatus.CANCELED) {
-                    continue;
-                }
-                Long productId = item.getProduct().getId();
-                int qty = item.getQuantity() - item.getCanceledQuantity();
-                quantityMap.put(productId, quantityMap.getOrDefault(productId, 0) + qty);
-                amountMap.put(productId, amountMap.getOrDefault(productId, 0) + qty * item.getUnitPrice());
-                nameMap.put(productId, item.getProduct().getName());
-            }
+        if (limit <= 0) {
+            return new ArrayList<>();
         }
-
-        List<Map.Entry<Long, Integer>> entries = new ArrayList<>(quantityMap.entrySet());
-        entries.sort((a, b) -> b.getValue() - a.getValue());
+        List<Object[]> rows = orderItemRepository.aggregateSalesByProduct(
+                List.of(OrderStatus.CREATED, OrderStatus.CANCELED),
+                OrderItemStatus.CANCELED,
+                PageRequest.of(0, limit));
 
         List<Map<String, Object>> result = new ArrayList<>();
         int rank = 1;
-        for (Map.Entry<Long, Integer> entry : entries) {
-            if (rank > limit) {
-                break;
-            }
+        for (Object[] r : rows) {
             Map<String, Object> row = new LinkedHashMap<>();
-            row.put("rank", rank);
-            row.put("productId", entry.getKey());
-            row.put("productName", nameMap.get(entry.getKey()));
-            row.put("quantity", entry.getValue());
-            row.put("amount", amountMap.get(entry.getKey()));
+            row.put("rank", rank++);
+            row.put("productId", r[0]);
+            row.put("productName", r[1]);
+            row.put("quantity", ((Number) r[2]).intValue());
+            row.put("amount", ((Number) r[3]).intValue());
             result.add(row);
-            rank++;
         }
         return result;
     }
