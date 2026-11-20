@@ -35,4 +35,7 @@ tasks.withType(JavaCompile).configureEach {
 
 tasks.named('test') {
     useJUnitPlatform()
+    // 테스트 전용 더미 값 (실제 비밀 값 아님)
+    environment 'PG_SECRET_KEY', 'test-dummy-pg-key'
+    environment 'ADMIN_TOKEN', 'test-dummy-admin-token'
 }

@@ -1,10 +1,10 @@
 package com.example.shop.controller;
 
 import com.example.shop.common.ApiResponse;
+import com.example.shop.config.AppSecrets;
 import com.example.shop.dto.OrderResponse;
 import com.example.shop.service.AdminOrderService;
 import com.example.shop.service.OrderService;
-import com.example.shop.util.Constants;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -23,6 +23,7 @@ public class AdminController {
 
     private final OrderService orderService;
     private final AdminOrderService adminOrderService;
+    private final AppSecrets appSecrets;
 
     @GetMapping("/orders/search")
     public ApiResponse<List<OrderResponse>> search(@RequestParam(required = false) String status,
@@ -91,7 +92,7 @@ public class AdminController {
     }
 
     private void checkToken(String token) {
-        if (!Constants.ADMIN_TOKEN.equals(token)) {
+        if (!appSecrets.matchesAdminToken(token)) {
             throw new IllegalArgumentException("관리자 인증 실패");
         }
     }

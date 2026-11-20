@@ -79,7 +79,7 @@
 Spring Security는 없습니다.
 
 - 고객 API: `X-MEMBER-ID` 헤더 값을 회원 ID로 사용합니다. 이 값을 받는 엔드포인트는 주문 생성, 미리보기, 내 주문 목록, 요약, 취소, 재주문, 구매확정입니다.
-- 관리자 API: `prepare`, `ship`, `deliver` 세 개만 `X-ADMIN-TOKEN` 헤더를 `Constants.ADMIN_TOKEN`과 비교합니다. 불일치하면 `IllegalArgumentException`("관리자 인증 실패")이 발생합니다. 나머지 `/admin` 엔드포인트에는 토큰 확인 코드가 없습니다.
+- 관리자 API: `prepare`, `ship`, `deliver` 세 개만 `X-ADMIN-TOKEN` 헤더를 환경 변수 `ADMIN_TOKEN`과 비교합니다. 불일치하면 `IllegalArgumentException`("관리자 인증 실패")이 발생합니다. 나머지 `/admin` 엔드포인트에는 토큰 확인 코드가 없습니다.
 - 화면(`js/common.js`)은 `localStorage`의 `memberId`(없으면 4)를 `X-MEMBER-ID`로 보냅니다. `admin.html`은 입력창의 값을 `X-ADMIN-TOKEN`으로 보냅니다.
 
 ### 4.3 엔드포인트 목록
