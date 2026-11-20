@@ -1,13 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "Bash(./gradlew build:*)",
-      "Bash(./gradlew test:*)"
+      "Bash(./gradlew build *)",
+      "Bash(./gradlew test *)"
+    ],
+    "ask": [
+      "Bash(git commit *)",
+      "Bash(git reset *)"
     ],
     "deny": [
       "Read(./.env)",
       "Read(./.env.*)",
-      "Bash(git push:*)"
+      "Bash(git push *)",
+      "Bash(git * push *)"
     ]
   }
 }
