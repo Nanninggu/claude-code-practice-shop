@@ -5,6 +5,7 @@ import com.example.shop.dto.*;
 import com.example.shop.repository.*;
 import com.example.shop.util.DateUtil;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -40,24 +41,31 @@ public class AdminOrderService {
     @SuppressWarnings("unchecked")
     public List<OrderResponse> searchOrdersForAdmin(String status, String keyword, String fromDate, String toDate) {
         StringBuilder sql = new StringBuilder("select * from orders o where 1=1");
+        Map<String, Object> params = new HashMap<>();
         if (status != null && !status.isEmpty()) {
-            sql.append(" and o.status = '").append(status).append("'");
+            // 허용된 enum 값만 통과 (잘못된 값은 IllegalArgumentException -> 400)
+            sql.append(" and o.status = :status");
+            params.put("status", OrderStatus.valueOf(status).name());
         }
         if (keyword != null && !keyword.isEmpty()) {
-            sql.append(" and (o.ord_no like '%").append(keyword).append("%'")
-                    .append(" or o.receiver_name like '%").append(keyword).append("%')");
+            sql.append(" and (o.ord_no like :keyword or o.receiver_name like :keyword)");
+            params.put("keyword", "%" + keyword + "%");
         }
         if (fromDate != null && !fromDate.isEmpty()) {
-            sql.append(" and o.created_at >= '").append(fromDate).append(" 00:00:00'");
+            sql.append(" and o.created_at >= :fromDate");
+            params.put("fromDate", DateUtil.startOfDay(LocalDate.parse(fromDate)));
         }
         if (toDate != null && !toDate.isEmpty()) {
-            sql.append(" and o.created_at <= '").append(toDate).append(" 23:59:59'");
+            sql.append(" and o.created_at <= :toDate");
+            params.put("toDate", DateUtil.endOfDay(LocalDate.parse(toDate)));
         }
         sql.append(" order by o.id desc");
 
-        log.debug("관리자 검색 SQL: {}", sql);
+        log.debug("관리자 검색 SQL: {} params={}", sql, params);
 
-        List<Order> orders = em.createNativeQuery(sql.toString(), Order.class).getResultList();
+        Query query = em.createNativeQuery(sql.toString(), Order.class);
+        params.forEach(query::setParameter);
+        List<Order> orders = query.getResultList();
 
         List<OrderResponse> result = new ArrayList<>();
         for (Order order : orders) {
