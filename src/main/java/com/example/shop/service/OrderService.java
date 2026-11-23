@@ -157,6 +157,9 @@ public class OrderService {
             if (product == null) {
                 throw new IllegalArgumentException("상품을 찾을 수 없습니다. id=" + prevItem.getProduct().getId());
             }
+            if (product.getStatus() == ProductStatus.STOPPED) {
+                throw new IllegalStateException("판매중지된 상품이 포함되어 재주문할 수 없습니다: " + product.getName());
+            }
             if (product.getStock() < quantity) {
                 throw new IllegalStateException("재고가 부족합니다: " + product.getName());
             }
