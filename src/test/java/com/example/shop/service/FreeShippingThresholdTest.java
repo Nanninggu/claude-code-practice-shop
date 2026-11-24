@@ -17,7 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 규칙: (상품 금액 - 할인) 이 50,000원 이상이면 배송비는 무료다. (경계값 50,000원 포함)
+ * 브론즈 규칙: (상품 금액 - 할인) 이 50,000원 이상이면 배송비는 무료다. (경계값 50,000원 포함)
+ * 실버(4만)/골드(3만)/VIP 와 쿠폰 경계는 GradeFreeShippingThresholdTest 에서 다룬다.
  * 기대값은 코드가 아니라 이 규칙에서 손으로 계산했다.
  */
 @SpringBootTest

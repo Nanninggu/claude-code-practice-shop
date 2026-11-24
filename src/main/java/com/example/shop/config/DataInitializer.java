@@ -7,6 +7,7 @@ import com.example.shop.repository.OrderRepository;
 import com.example.shop.repository.PaymentRepository;
 import com.example.shop.repository.ProductRepository;
 import com.example.shop.util.DateUtil;
+import com.example.shop.util.PriceUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -202,7 +203,7 @@ public class DataInitializer implements CommandLineRunner {
         MemberGrade grade = order.getMember().getGrade();
         int rate = grade == MemberGrade.SILVER ? 3 : grade == MemberGrade.GOLD ? 5 : grade == MemberGrade.VIP ? 10 : 0;
         int discount = total * rate / 100;
-        int shipping = (grade == MemberGrade.VIP || total - discount >= 50000) ? 0 : 3000;
+        int shipping = PriceUtil.calcShippingFee(total - discount, grade);
         order.setTotalPrice(total);
         order.setDiscountPrice(discount);
         order.setShippingFee(shipping);

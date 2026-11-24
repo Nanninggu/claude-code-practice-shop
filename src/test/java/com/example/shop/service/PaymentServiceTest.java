@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * PaymentService.pay / refund 분기별 테스트.
  * 기대값은 코드 출력이 아니라 업무 규칙에서 손으로 계산했다.
- *  - 등급 할인: SILVER 3%, GOLD 5%, VIP 10%. 배송비 3,000원(5만원 초과 또는 VIP 는 무료)
+ *  - 등급 할인: SILVER 3%, GOLD 5%, VIP 10%. 배송비 3,000원(할인 후 금액이 등급별 기준 이상이면 무료: 브론즈 5만/실버 4만/골드 3만 원, 경계 포함. VIP 는 항상 무료)
  *  - 포인트 적립: 결제금액의 일반 1%, GOLD 이상 2%
  *  - 환불은 고객이 낸 돈(결제금액)을 넘을 수 없다
  *

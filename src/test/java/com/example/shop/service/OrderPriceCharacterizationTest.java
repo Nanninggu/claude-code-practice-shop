@@ -24,11 +24,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *
  * 비교 대상 두 경로
  *  - 주문 시: OrderService 의 private calculateDiscount / calculateShippingFee
- *      할인 = 정수 나눗셈(내림), 무료배송 = 금액 >= 50,000
+ *      할인 = 정수 나눗셈(내림)
  *  - 결제 검증 시: PriceUtil.calculatePayPrice (PaymentService.pay 가 사용)
- *      할인 = Math.round(반올림),  무료배송 = 금액 >= 50,000
+ *      할인 = Math.round(반올림)
+ *  - 무료배송은 두 경로 모두 PriceUtil.calcShippingFee 로 정한다.
+ *      할인 후 금액 >= 등급별 기준(브론즈 50,000 / 실버 40,000 / 골드 30,000), VIP 는 항상 무료
  *
- * 두 경로의 규칙이 달라서, 경계값에서는 주문 시 저장된 payPrice 와 결제 검증 값이 어긋나
+ * 두 경로의 할인 계산이 달라서, 반올림 경계값에서는 주문 시 저장된 payPrice 와 결제 검증 값이 어긋나
  * pay() 가 "결제 금액이 일치하지 않습니다." 로 실패한다.
  */
 @SpringBootTest
@@ -94,11 +96,11 @@ class OrderPriceCharacterizationTest {
     }
 
     @Test
-    void 실버_51500원_할인후_49955원이라_배송비3000_두경로_일치() {
-        // 무료배송 기준은 할인 "후" 금액으로 판단한다
+    void 실버_51500원_할인후_49955원이라_실버기준_40000원_이상_무료배송_두경로_일치() {
+        // 51,500 × 3% = 1,545 (딱 떨어짐). 할인 후 49,955 >= 실버 기준 40,000 → 배송비 0 → 결제 49,955
         Order order = placeOrder(MemberGrade.SILVER, 51500);
-        assertOrder(order, 51500, 1545, 3000, 52955);
-        assertThat(PriceUtil.calculatePayPrice(order)).isEqualTo(52955);
+        assertOrder(order, 51500, 1545, 0, 49955);
+        assertThat(PriceUtil.calculatePayPrice(order)).isEqualTo(49955);
         assertPaymentAccepted(order);
     }
 
@@ -139,19 +141,20 @@ class OrderPriceCharacterizationTest {
     }
 
     @Test
-    void QUIRK_골드_52631원_반올림때문에_할인후_금액이_50000원_경계를_가름_결제실패() {
-        // 주문: 할인 2631(내림) -> 50000 -> >= 이라 무료 -> 50000.
-        // PriceUtil: 할인 2632(반올림) -> 49999 -> 배송비 3000 -> 52999.
+    void QUIRK_골드_52631원_할인_반올림_차이로_1원_어긋남_결제실패() {
+        // 52,631 × 5% = 2,631.55. 골드 무료배송 기준은 30,000원이라 두 경로 모두 배송비 0.
+        // 주문: 할인 2631(내림) -> 50000 -> 무료 -> 50000.
+        // PriceUtil: 할인 2632(반올림) -> 49999 -> 무료 -> 49999. 배송비는 같지만 할인 1원 차이로 불일치.
         Order order = placeOrder(MemberGrade.GOLD, 52631);
         assertOrder(order, 52631, 2631, 0, 50000);
-        assertThat(PriceUtil.calculatePayPrice(order)).isEqualTo(52999);
+        assertThat(PriceUtil.calculatePayPrice(order)).isEqualTo(49999);
         assertPaymentRejectedAsMismatch(order);
     }
 
     @Test
     void QUIRK_골드_52632원_할인_반올림_차이로_1원_어긋남_결제실패() {
         // 주문: 할인 2631(내림) -> 50001 -> 무료 -> 50001.
-        // PriceUtil: 할인 2632(반올림) -> 50000 -> >= 라 무료 -> 50000. 배송비는 같지만 할인 1원 차이로 불일치.
+        // PriceUtil: 할인 2632(반올림) -> 50000 -> 골드 기준 30,000 이상이라 무료 -> 50000. 배송비는 같지만 할인 1원 차이로 불일치.
         Order order = placeOrder(MemberGrade.GOLD, 52632);
         assertOrder(order, 52632, 2631, 0, 50001);
         assertThat(PriceUtil.calculatePayPrice(order)).isEqualTo(50000);

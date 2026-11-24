@@ -28,11 +28,26 @@ public class PriceUtil {
         return (int) Math.round(totalPrice * rate / 100.0);
     }
 
+    /** 등급별 무료배송 기준 금액. VIP 는 기준 없이 항상 무료이므로 0. */
+    public static int getFreeShippingThreshold(MemberGrade grade) {
+        switch (grade) {
+            case SILVER:
+                return Constants.FREE_SHIPPING_THRESHOLD_SILVER;
+            case GOLD:
+                return Constants.FREE_SHIPPING_THRESHOLD_GOLD;
+            case VIP:
+                return 0;
+            default:
+                return Constants.FREE_SHIPPING_THRESHOLD_BRONZE;
+        }
+    }
+
+    /** amount 는 등급 할인과 쿠폰을 뺀 금액. 기준 금액 이상(경계 포함)이면 무료. */
     public static int calcShippingFee(int amount, MemberGrade grade) {
         if (grade == MemberGrade.VIP) {
             return 0;
         }
-        if (amount >= Constants.FREE_SHIPPING_THRESHOLD) {
+        if (amount >= getFreeShippingThreshold(grade)) {
             return 0;
         }
         return Constants.SHIPPING_FEE;

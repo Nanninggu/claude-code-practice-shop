@@ -5,6 +5,7 @@ import com.example.shop.dto.*;
 import com.example.shop.repository.*;
 import com.example.shop.util.Constants;
 import com.example.shop.util.DateUtil;
+import com.example.shop.util.PriceUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -637,13 +638,7 @@ public class OrderService {
     }
 
     private int calculateShippingFee(int amount, MemberGrade grade) {
-        if (grade == MemberGrade.VIP) {
-            return 0;
-        }
-        if (amount >= Constants.FREE_SHIPPING_THRESHOLD) {
-            return 0;
-        }
-        return Constants.SHIPPING_FEE;
+        return PriceUtil.calcShippingFee(amount, grade);
     }
 
     // private int calculateShippingFee(int amount) {
